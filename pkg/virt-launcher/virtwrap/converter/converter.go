@@ -100,6 +100,16 @@ type ConverterContext struct {
 	OVMFPath              string
 	MemBalloonStatsPeriod uint
 	UseVirtioTransitional bool
+	VolumesDiscardIgnore  []string
+}
+
+func contains(volumes []string, name string) bool {
+	for _, v := range volumes {
+		if name == v {
+			return true
+		}
+	}
+	return false
 }
 
 // pop next device ID or address from a list
@@ -209,7 +219,11 @@ func Convert_v1_Disk_To_api_Disk(c *ConverterContext, diskDevice *v1.Disk, disk 
 		IO:          string(diskDevice.IO),
 		ErrorPolicy: "stop",
 	}
-
+	if diskDevice.Disk != nil || diskDevice.LUN != nil {
+		if !contains(c.VolumesDiscardIgnore, diskDevice.Name) {
+			disk.Driver.Discard = "unmap"
+		}
+	}
 	if numQueues != nil && disk.Target.Bus == "virtio" {
 		disk.Driver.Queues = numQueues
 	}
@@ -540,6 +554,9 @@ func Convert_v1_FilesystemVolumeSource_To_api_Disk(volumeName string, disk *api.
 	disk.Type = "file"
 	disk.Driver.Type = "raw"
 	disk.Driver.ErrorPolicy = "stop"
+	if !contains(c.VolumesDiscardIgnore, volumeName) {
+		disk.Driver.Discard = "unmap"
+	}
 	disk.Source.File = GetFilesystemVolumePath(volumeName)
 	return nil
 }
@@ -549,6 +566,9 @@ func Convert_v1_Hotplug_FilesystemVolumeSource_To_api_Disk(volumeName string, di
 	disk.Type = "file"
 	disk.Driver.Type = "raw"
 	disk.Driver.ErrorPolicy = "stop"
+	if !contains(c.VolumesDiscardIgnore, volumeName) {
+		disk.Driver.Discard = "unmap"
+	}
 	disk.Source.File = GetHotplugFilesystemVolumePath(volumeName)
 	return nil
 }
@@ -557,6 +577,9 @@ func Convert_v1_BlockVolumeSource_To_api_Disk(volumeName string, disk *api.Disk,
 	disk.Type = "block"
 	disk.Driver.Type = "raw"
 	disk.Driver.ErrorPolicy = "stop"
+	if !contains(c.VolumesDiscardIgnore, volumeName) {
+		disk.Driver.Discard = "unmap"
+	}
 	disk.Source.Dev = GetBlockDeviceVolumePath(volumeName)
 	return nil
 }
@@ -566,6 +589,9 @@ func Convert_v1_Hotplug_BlockVolumeSource_To_api_Disk(volumeName string, disk *a
 	disk.Type = "block"
 	disk.Driver.Type = "raw"
 	disk.Driver.ErrorPolicy = "stop"
+	if !contains(c.VolumesDiscardIgnore, volumeName) {
+		disk.Driver.Discard = "unmap"
+	}
 	disk.Source.Dev = GetHotplugBlockDeviceVolumePath(volumeName)
 	return nil
 }
@@ -614,6 +640,7 @@ func Convert_v1_EmptyDiskSource_To_api_Disk(volumeName string, _ *v1.EmptyDiskSo
 
 	disk.Type = "file"
 	disk.Driver.Type = "qcow2"
+	disk.Driver.Discard = "unmap"
 	disk.Source.File = emptydisk.FilePathForVolumeName(volumeName)
 	disk.Driver.ErrorPolicy = "stop"
 
@@ -627,6 +654,7 @@ func Convert_v1_ContainerDiskSource_To_api_Disk(volumeName string, _ *v1.Contain
 	disk.Type = "file"
 	disk.Driver.Type = "qcow2"
 	disk.Driver.ErrorPolicy = "stop"
+	disk.Driver.Discard = "unmap"
 	disk.Source.File = ephemeraldisk.GetFilePath(volumeName)
 	disk.BackingStore = &api.BackingStore{
 		Format: &api.BackingStoreFormat{},
@@ -646,6 +674,7 @@ func Convert_v1_EphemeralVolumeSource_To_api_Disk(volumeName string, source *v1.
 	disk.Type = "file"
 	disk.Driver.Type = "qcow2"
 	disk.Driver.ErrorPolicy = "stop"
+	disk.Driver.Discard = "unmap"
 	disk.Source.File = ephemeraldisk.GetFilePath(volumeName)
 	disk.BackingStore = &api.BackingStore{
 		Format: &api.BackingStoreFormat{},

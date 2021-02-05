@@ -2028,6 +2028,29 @@ func (d *VirtualMachineController) getLauncherClinetInfo(vmi *v1.VirtualMachineI
 func (d *VirtualMachineController) processVmUpdate(origVMI *v1.VirtualMachineInstance) error {
 	vmi := origVMI.DeepCopy()
 
+	// Find preallocated volumes
+	var preallocatedVolumes []string
+	for _, v := range vmi.Spec.Volumes {
+		var name string
+		source := v.VolumeSource
+		if source.PersistentVolumeClaim != nil || source.DataVolume != nil {
+			if source.PersistentVolumeClaim != nil {
+				name = source.PersistentVolumeClaim.ClaimName
+			} else {
+				name = source.DataVolume.Name
+			}
+			pvc, err := d.clientset.CoreV1().PersistentVolumeClaims(vmi.Namespace).Get(context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				continue
+			}
+			ann := pvc.ObjectMeta.Annotations
+
+			if pvcutils.IsPreallocated(ann) {
+				preallocatedVolumes = append(preallocatedVolumes, v.Name)
+			}
+		}
+	}
+
 	isUnresponsive, isInitialized, err := d.isLauncherClientUnresponsive(vmi)
 	if err != nil {
 		return err
@@ -2172,6 +2195,7 @@ func (d *VirtualMachineController) processVmUpdate(origVMI *v1.VirtualMachineIns
 				Version:      smbios.Version,
 			},
 			MemBalloonStatsPeriod: period,
+			PreallocatedVolumes:   preallocatedVolumes,
 		}
 
 		err = client.SyncVirtualMachine(vmi, options)
