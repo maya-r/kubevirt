@@ -7,7 +7,7 @@ require (
 	github.com/coreos/go-iptables v0.4.3
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.35.0
-	github.com/emicklei/go-restful v2.10.0+incompatible
+	github.com/emicklei/go-restful v2.15.0+incompatible
 	github.com/emicklei/go-restful-openapi v1.2.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/color v1.9.0 // indirect
@@ -32,6 +32,7 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v0.0.0-20191119172530-79f836b90111
 	github.com/krolaw/dhcp4 v0.0.0-20180925202202-7cead472c414
 	github.com/kubernetes-csi/external-snapshotter/v2 v2.1.1
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mfranczy/crd-rest-coverage v0.1.0
 	github.com/mitchellh/go-ps v0.0.0-20190716172923-621e5597135b
 	github.com/mitchellh/go-vnc v0.0.0-20150629162542-723ed9867aed
@@ -52,21 +53,23 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20200914145417-7484f55b2263
 	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad
 	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
+	golang.org/x/mod v0.4.1 // indirect
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 	google.golang.org/grpc v1.30.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.2
 	k8s.io/apiextensions-apiserver v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/klog/v2 v2.5.0 // indirect
 	k8s.io/kube-aggregator v0.19.0-rc.2
-	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
+	k8s.io/kube-openapi v0.0.0-20210211043216-66d8d84e87dd
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	kubevirt.io/client-go v0.0.0-00010101000000-000000000000
-	kubevirt.io/containerized-data-importer v1.26.1
-	kubevirt.io/controller-lifecycle-operator-sdk v0.1.1
+	kubevirt.io/containerized-data-importer v1.30.0
+	kubevirt.io/controller-lifecycle-operator-sdk v0.1.2
 	kubevirt.io/qe-tools v0.1.6
 	libvirt.org/libvirt-go v6.5.0+incompatible
 	mvdan.cc/sh/v3 v3.1.1
@@ -109,8 +112,6 @@ replace (
 	k8s.io/sample-controller => k8s.io/sample-controller v0.20.2
 
 	kubevirt.io/client-go => ./staging/src/kubevirt.io/client-go
-
-	kubevirt.io/containerized-data-importer => kubevirt.io/containerized-data-importer v1.26.1
 )
 
 go 1.13

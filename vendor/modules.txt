@@ -45,7 +45,7 @@ github.com/davecgh/go-spew/spew
 # github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c
 github.com/docker/spdystream
 github.com/docker/spdystream/spdy
-# github.com/emicklei/go-restful v2.10.0+incompatible
+# github.com/emicklei/go-restful v2.15.0+incompatible
 github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
 # github.com/emicklei/go-restful-openapi v1.2.0
@@ -66,7 +66,7 @@ github.com/go-kit/kit/endpoint
 github.com/go-kit/kit/log
 # github.com/go-logfmt/logfmt v0.4.0
 github.com/go-logfmt/logfmt
-# github.com/go-logr/logr v0.2.0
+# github.com/go-logr/logr v0.4.0
 github.com/go-logr/logr
 # github.com/go-openapi/analysis v0.19.2
 github.com/go-openapi/analysis
@@ -159,6 +159,8 @@ github.com/insomniacslk/dhcp/dhcpv6/server6
 github.com/insomniacslk/dhcp/iana
 github.com/insomniacslk/dhcp/interfaces
 github.com/insomniacslk/dhcp/rfc1035label
+# github.com/josharian/intern v1.0.0
+github.com/josharian/intern
 # github.com/json-iterator/go v1.1.10
 github.com/json-iterator/go
 # github.com/k8snetworkplumbingwg/network-attachment-definition-client v0.0.0-20191119172530-79f836b90111
@@ -173,7 +175,7 @@ github.com/krolaw/dhcp4
 github.com/krolaw/dhcp4/conn
 # github.com/kubernetes-csi/external-snapshotter/v2 v2.1.1
 github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1
-# github.com/mailru/easyjson v0.7.0
+# github.com/mailru/easyjson v0.7.7
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
@@ -340,7 +342,7 @@ golang.org/x/crypto/poly1305
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 golang.org/x/net/bpf
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -363,13 +365,13 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
+# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.0.0-20201117132131-f5c789dd3221
+# golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 golang.org/x/term
 # golang.org/x/text v0.3.4
 golang.org/x/text/encoding
@@ -494,7 +496,7 @@ gopkg.in/cheggaaa/pb.v1
 gopkg.in/inf.v0
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
 # k8s.io/api v0.20.2 => k8s.io/api v0.20.2
 k8s.io/api/admission/v1beta1
@@ -844,7 +846,7 @@ k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/klog/v2 v2.4.0
+# k8s.io/klog/v2 v2.5.0
 k8s.io/klog/v2
 # k8s.io/kube-aggregator v0.19.0-rc.2 => k8s.io/kube-aggregator v0.20.2
 k8s.io/kube-aggregator/pkg/apis/apiregistration
@@ -854,7 +856,7 @@ k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset
 k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/scheme
 k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1
 k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1beta1
-# k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f => k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
+# k8s.io/kube-openapi v0.0.0-20210211043216-66d8d84e87dd => k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
 k8s.io/kube-openapi/pkg/builder
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util
@@ -906,7 +908,7 @@ kubevirt.io/client-go/precond
 kubevirt.io/client-go/subresources
 kubevirt.io/client-go/util
 kubevirt.io/client-go/version
-# kubevirt.io/containerized-data-importer v1.26.1 => kubevirt.io/containerized-data-importer v1.26.1
+# kubevirt.io/containerized-data-importer v1.30.0
 kubevirt.io/containerized-data-importer/pkg/apis/core
 kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1
 kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1
@@ -914,7 +916,7 @@ kubevirt.io/containerized-data-importer/pkg/apis/upload
 kubevirt.io/containerized-data-importer/pkg/apis/upload/v1alpha1
 kubevirt.io/containerized-data-importer/pkg/apis/upload/v1beta1
 kubevirt.io/containerized-data-importer/pkg/clone
-# kubevirt.io/controller-lifecycle-operator-sdk v0.1.1
+# kubevirt.io/controller-lifecycle-operator-sdk v0.1.2
 kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api
 # kubevirt.io/qe-tools v0.1.6
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
