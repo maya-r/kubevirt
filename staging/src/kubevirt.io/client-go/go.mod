@@ -61,7 +61,7 @@ replace (
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.20.2
 	k8s.io/sample-controller => k8s.io/sample-controller v0.20.2
 
-	kubevirt.io/containerized-data-importer => kubevirt.io/containerized-data-importer v1.26.1
+	kubevirt.io/containerized-data-importer => github.com/maya-r/containerized-data-importer v0.0.0-20210218212041-c0a597427dd1
 	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2
 
 )
