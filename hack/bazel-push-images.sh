@@ -26,12 +26,13 @@ PUSH_TARGETS=(${PUSH_TARGETS:-other-images virt-operator virt-api virt-controlle
 
 for tag in ${docker_tag} ${docker_tag_alt}; do
     for target in ${PUSH_TARGETS[@]}; do
-
-        bazel run \
+        env PULLER_TIMEOUT=6000 \
+            bazel run \
             --config=${ARCHITECTURE} \
             --define container_prefix=${docker_prefix} \
             --define image_prefix=${image_prefix} \
             --define container_tag=${tag} \
+            --analysis_testing_deps_limit=3600 \
             //:push-${target}
 
     done
@@ -40,12 +41,13 @@ done
 # for the imagePrefix operator test
 if [[ $image_prefix_alt ]]; then
     for target in ${PUSH_TARGETS[@]}; do
-
-        bazel run \
+        env PULLER_TIMEOUT=6000 \
+            bazel run \
             --config=${ARCHITECTURE} \
             --define container_prefix=${docker_prefix} \
             --define image_prefix=${image_prefix_alt} \
             --define container_tag=${docker_tag} \
+            --analysis_testing_deps_limit=3600 \
             //:push-${target}
 
     done
