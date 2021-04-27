@@ -562,6 +562,23 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 				Expect(virtClient.VirtualMachine(vm.Namespace).Delete(vm.Name, &metav1.DeleteOptions{})).To(Succeed())
 			})
 
+			FIt("a DataVolume with preallocation shouldn't have discard=unmap", func() {
+				var vm *v1.VirtualMachine
+				vm = tests.NewRandomVMWithDataVolume(tests.GetUrl(tests.AlpineHttpUrl), tests.NamespaceTestDefault)
+				blankDv := tests.NewRandomBlankDataVolume(tests.NamespaceTestDefault, tests.Config.StorageClassLocal, "1024Mi", k8sv1.ReadWriteOnce, k8sv1.PersistentVolumeFilesystem)
+				tests.AddDataVolumeTemplate(vm, blankDv)
+
+				vm, err = virtClient.VirtualMachine(tests.NamespaceTestDefault).Create(vm)
+				Expect(err).ToNot(HaveOccurred())
+
+				vm = tests.StartVirtualMachine(vm)
+				_ /*vmi*/, err := virtClient.VirtualMachineInstance(vm.Namespace).Get(vm.Name, &metav1.GetOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				//				vm = tests.StopVirtualMachine(vm)
+				//				Expect(virtClient.VirtualMachine(vm.Namespace).Delete(vm.Name, &metav1.DeleteOptions{})).To(Succeed())
+				time.Sleep(100 * time.Minute)
+			})
+
 			table.DescribeTable("[test_id:3191]should be successfully started and stopped multiple times", func(isHTTP bool) {
 				var vm *v1.VirtualMachine
 				if isHTTP {
