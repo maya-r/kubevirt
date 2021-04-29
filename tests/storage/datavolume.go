@@ -28,12 +28,15 @@ import (
 	"os"
 	"time"
 
+	expect "github.com/google/goexpect"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	k8sv1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
@@ -541,6 +544,78 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 	})
 
 	Describe("[rfe_id:3188][crit:high][vendor:cnv-qe@redhat.com][level:system] Starting a VirtualMachine with a DataVolume", func() {
+		FIt("fstrim from the VM influences disk.img", func() {
+			ParseSize := func(lsOutput string) int64 {
+				var imageSize int64
+				var unused string
+				fmt.Sscanf(lsOutput, "%d %s", &imageSize, &unused)
+				return imageSize
+			}
+
+			dataVolume := tests.NewRandomDataVolumeWithHttpImport(tests.GetUrl(tests.FedoraHttpUrl), tests.NamespaceTestDefault, k8sv1.ReadWriteOnce)
+			dataVolume.Spec.PVC.Resources.Requests[k8sv1.ResourceStorage] = resource.MustParse("5Gi")
+			//preallocation := true
+			//dataVolume.Spec.Preallocation = &preallocation
+
+			vmi := tests.NewRandomVMIWithDataVolume(dataVolume.Name)
+			vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceMemory] = resource.MustParse("512M")
+			tests.AddUserData(vmi, "cloud-init", tests.GetFedoraToolsGuestAgentUserData())
+
+			_, err := virtClient.CdiClient().CdiV1alpha1().DataVolumes(dataVolume.Namespace).Create(context.Background(), dataVolume, metav1.CreateOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			tests.WaitForDataVolumeReadyToStartVMI(vmi, 140)
+			vmi = tests.RunVMIAndExpectLaunchWithDataVolume(vmi, dataVolume, 500)
+
+			By("Expecting the VirtualMachineInstance console")
+			Expect(console.LoginToFedora(vmi)).To(Succeed())
+
+			By("Filling out disk space")
+			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
+				&expect.BSnd{S: "\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "dd if=/dev/urandom of=largefile bs=1M count=100 2> /dev/null\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sync\n"},
+				&expect.BExp{R: console.PromptExpression},
+			}, 360)).To(Succeed(), "should write until failure")
+
+			pod := tests.GetRunningPodByVirtualMachineInstance(vmi, tests.NamespaceTestDefault)
+			lsOutput, err := tests.ExecuteCommandOnPod(
+				virtClient,
+				pod,
+				"compute",
+				[]string{"ls", "-s", "/var/run/kubevirt-private/vmi-disks/disk0/disk.img"},
+			)
+			Expect(err).ToNot(HaveOccurred())
+			imageSizeBeforeTrim := ParseSize(lsOutput)
+			By(fmt.Sprintf("image size before trim is %d", imageSizeBeforeTrim))
+
+			By("Deleting and trimming disk")
+			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
+				&expect.BSnd{S: "rm -f largefile\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sudo fstrim -v /\n"},
+				&expect.BExp{R: console.PromptExpression},
+			}, 60)).To(Succeed(), "should trim within the VM")
+			pod = tests.GetRunningPodByVirtualMachineInstance(vmi, tests.NamespaceTestDefault)
+			lsOutput, err = tests.ExecuteCommandOnPod(
+				virtClient,
+				pod,
+				"compute",
+				[]string{"ls", "-s", "/var/run/kubevirt-private/vmi-disks/disk0/disk.img"},
+			)
+			Expect(err).ToNot(HaveOccurred())
+			imageSizeAfterTrim := ParseSize(lsOutput)
+			By(fmt.Sprintf("image size after trim is %d", imageSizeAfterTrim))
+
+			// conditional on preallocation
+			Expect(imageSizeAfterTrim).To(BeNumerically("<", imageSizeBeforeTrim))
+
+			err = virtClient.VirtualMachineInstance(tests.NamespaceTestDefault).Delete(vmi.Name, &metav1.DeleteOptions{})
+			Expect(err).To(BeNil())
+		})
+
 		Context("using Alpine http import", func() {
 			It("a DataVolume with preallocation shouldn't have discard=unmap", func() {
 				var vm *v1.VirtualMachine
@@ -560,23 +635,6 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 				Expect(domXml).ToNot(ContainSubstring("discard='unmap'"))
 				vm = tests.StopVirtualMachine(vm)
 				Expect(virtClient.VirtualMachine(vm.Namespace).Delete(vm.Name, &metav1.DeleteOptions{})).To(Succeed())
-			})
-
-			FIt("a DataVolume with preallocation shouldn't have discard=unmap", func() {
-				var vm *v1.VirtualMachine
-				vm = tests.NewRandomVMWithDataVolume(tests.GetUrl(tests.AlpineHttpUrl), tests.NamespaceTestDefault)
-				blankDv := tests.NewRandomBlankDataVolume(tests.NamespaceTestDefault, tests.Config.StorageClassLocal, "1024Mi", k8sv1.ReadWriteOnce, k8sv1.PersistentVolumeFilesystem)
-				tests.AddDataVolumeTemplate(vm, blankDv)
-
-				vm, err = virtClient.VirtualMachine(tests.NamespaceTestDefault).Create(vm)
-				Expect(err).ToNot(HaveOccurred())
-
-				vm = tests.StartVirtualMachine(vm)
-				_ /*vmi*/, err := virtClient.VirtualMachineInstance(vm.Namespace).Get(vm.Name, &metav1.GetOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				//				vm = tests.StopVirtualMachine(vm)
-				//				Expect(virtClient.VirtualMachine(vm.Namespace).Delete(vm.Name, &metav1.DeleteOptions{})).To(Succeed())
-				time.Sleep(100 * time.Minute)
 			})
 
 			table.DescribeTable("[test_id:3191]should be successfully started and stopped multiple times", func(isHTTP bool) {
