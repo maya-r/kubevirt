@@ -382,6 +382,8 @@ var _ = SIGDescribe("[Serial]VirtualMachineRestore Tests", func() {
 			})
 
 			doRestore := func(device string, onlineSnapshot bool) {
+				By(fmt.Sprintf("VMI running on node %s", vmi.Status.NodeName))
+
 				By("creating 'message with initial value")
 				Expect(libnet.WithIPv6(console.LoginToCirros)(vmi)).To(Succeed())
 
@@ -438,6 +440,8 @@ var _ = SIGDescribe("[Serial]VirtualMachineRestore Tests", func() {
 				}
 				vmi, err = virtClient.VirtualMachineInstance(vm.Namespace).Get(vm.Name, &metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
+
+				By(fmt.Sprintf("VMI running on node %s", vmi.Status.NodeName))
 
 				By("updating message")
 				Expect(libnet.WithIPv6(console.LoginToCirros)(vmi)).To(Succeed())
@@ -575,7 +579,7 @@ var _ = SIGDescribe("[Serial]VirtualMachineRestore Tests", func() {
 				Expect(errors.IsNotFound(err)).To(BeTrue())
 			})
 
-			It("[QUARANTINE][test_id:5261]should restore a vm that boots from a datavolume (not template)", func() {
+			FIt("[QUARANTINE][test_id:5261]should restore a vm that boots from a datavolume (not template)", func() {
 				vm = tests.NewRandomVMWithDataVolumeAndUserDataInStorageClass(
 					tests.GetUrl(tests.CirrosHttpUrl),
 					tests.NamespaceTestDefault,
