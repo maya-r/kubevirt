@@ -554,8 +554,8 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 
 			dataVolume := tests.NewRandomDataVolumeWithHttpImport(tests.GetUrl(tests.FedoraHttpUrl), tests.NamespaceTestDefault, k8sv1.ReadWriteOnce)
 			dataVolume.Spec.PVC.Resources.Requests[k8sv1.ResourceStorage] = resource.MustParse("5Gi")
-			//preallocation := true
-			//dataVolume.Spec.Preallocation = &preallocation
+			preallocation := true
+			dataVolume.Spec.Preallocation = &preallocation
 
 			vmi := tests.NewRandomVMIWithDataVolume(dataVolume.Name)
 			vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceMemory] = resource.MustParse("512M")
