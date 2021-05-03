@@ -544,7 +544,7 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 	})
 
 	Describe("[rfe_id:3188][crit:high][vendor:cnv-qe@redhat.com][level:system] Starting a VirtualMachine with a DataVolume", func() {
-		FIt("fstrim from the VM influences disk.img", func() {
+		table.DescribeTable("fstrim from the VM influences disk.img", func(dvAnnotations map[string]string, expectSmaller bool) {
 			ParseSize := func(lsOutput string) int64 {
 				var imageSize int64
 				var unused string
@@ -609,12 +609,19 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 			imageSizeAfterTrim := ParseSize(lsOutput)
 			By(fmt.Sprintf("image size after trim is %d", imageSizeAfterTrim))
 
-			// conditional on preallocation
-			Expect(imageSizeAfterTrim).To(BeNumerically("<", imageSizeBeforeTrim))
+			if expectSmaller {
+				// discard=unmap should result in the file being smaller
+				Expect(imageSizeAfterTrim).To(BeNumerically("<", imageSizeBeforeTrim))
+			} else {
+				// Not unmapping, expecting no decrease in size
+				Expect(imageSizeAfterTrim).To(BeNumerically(">=", imageSizeBeforeTrim))
+			}
 
 			err = virtClient.VirtualMachineInstance(tests.NamespaceTestDefault).Delete(vmi.Name, &metav1.DeleteOptions{})
 			Expect(err).To(BeNil())
-		})
+		},
+			table.Entry("with http import", true),
+		)
 
 		Context("using Alpine http import", func() {
 			It("a DataVolume with preallocation shouldn't have discard=unmap", func() {
