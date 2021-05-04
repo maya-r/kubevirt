@@ -544,18 +544,36 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 	})
 
 	Describe("[rfe_id:3188][crit:high][vendor:cnv-qe@redhat.com][level:system] Starting a VirtualMachine with a DataVolume", func() {
-		table.DescribeTable("fstrim from the VM influences disk.img", func(dvAnnotations map[string]string, expectSmaller bool) {
-			ParseSize := func(lsOutput string) int64 {
-				var imageSize int64
-				var unused string
-				fmt.Sscanf(lsOutput, "%d %s", &imageSize, &unused)
-				return imageSize
-			}
+		ParseSize := func(lsOutput string) int64 {
+			var imageSize int64
+			var unused string
+			fmt.Sscanf(lsOutput, "%d %s", &imageSize, &unused)
+			return imageSize
+		}
+
+		noop := func(dv *cdiv1.DataVolume) *cdiv1.DataVolume {
+			return dv
+		}
+		addPreallocationTrue := func(dv *cdiv1.DataVolume) *cdiv1.DataVolume {
+			preallocation := true
+			dv.Spec.Preallocation = &preallocation
+			return dv
+		}
+		addPreallocationFalse := func(dv *cdiv1.DataVolume) *cdiv1.DataVolume {
+			preallocation := false
+			dv.Spec.Preallocation = &preallocation
+			return dv
+		}
+		addThickProvisionedAnnotation := func(dv *cdiv1.DataVolume) *cdiv1.DataVolume {
+			dv.Annotations = map[string]string{"user.custom.annotation/storage.thick-provisioned": "true"}
+			return dv
+		}
+
+		table.FDescribeTable("fstrim from the VM influences disk.img", func(dvChange func(*cdiv1.DataVolume) *cdiv1.DataVolume, expectSmaller bool) {
 
 			dataVolume := tests.NewRandomDataVolumeWithHttpImport(tests.GetUrl(tests.FedoraHttpUrl), tests.NamespaceTestDefault, k8sv1.ReadWriteOnce)
 			dataVolume.Spec.PVC.Resources.Requests[k8sv1.ResourceStorage] = resource.MustParse("5Gi")
-			preallocation := true
-			dataVolume.Spec.Preallocation = &preallocation
+			dataVolume = dvChange(dataVolume)
 
 			vmi := tests.NewRandomVMIWithDataVolume(dataVolume.Name)
 			vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceMemory] = resource.MustParse("512M")
@@ -620,7 +638,10 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 			err = virtClient.VirtualMachineInstance(tests.NamespaceTestDefault).Delete(vmi.Name, &metav1.DeleteOptions{})
 			Expect(err).To(BeNil())
 		},
-			table.Entry("with http import", true),
+			table.Entry("by default, fstrim will make the image smaller", noop, true),
+			table.Entry("with preallocation true, fstrim has no effect", addPreallocationTrue, false),
+			table.Entry("with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true),
+			table.Entry("with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false),
 		)
 
 		Context("using Alpine http import", func() {
