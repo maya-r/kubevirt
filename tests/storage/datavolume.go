@@ -649,9 +649,9 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 			table.Entry("with preallocation true, fstrim has no effect", addPreallocationTrue, false, false),
 			table.Entry("with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true, false),
 			table.Entry("with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false, false),
-			table.Entry("with OCS, by default, fstrim will make the image smaller", noop, true, true),
+			table.Entry("with OCS, by default, fstrim will make the ceph space usage go down", noop, true, true),
 			table.Entry("with OCS, with preallocation true, fstrim has no effect", addPreallocationTrue, false, true),
-			table.Entry("with OCS, with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true, true),
+			table.Entry("with OCS, with preallocation false, fstrim will the ceph space usage go down", addPreallocationFalse, true, true),
 			table.Entry("with OCS, with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false, true),
 		)
 
