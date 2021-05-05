@@ -544,10 +544,24 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 	})
 
 	Describe("[rfe_id:3188][crit:high][vendor:cnv-qe@redhat.com][level:system] Starting a VirtualMachine with a DataVolume", func() {
-		ParseSize := func(lsOutput string) int64 {
+		getImageSize := func(vmi *v1.VirtualMachineInstance, withOCS bool) int64 {
 			var imageSize int64
 			var unused string
-			fmt.Sscanf(lsOutput, "%d %s", &imageSize, &unused)
+			if withOCS {
+				dfOutput, err := tests.ExecuteCommandOnCephToolbox(virtClient, []string{"sh", "-c", "ceph df -f json | jq -r '.stats.total_used_bytes'"})
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Sscanf(dfOutput, "%d\n", &imageSize, &unused)
+			} else {
+				pod := tests.GetRunningPodByVirtualMachineInstance(vmi, tests.NamespaceTestDefault)
+				lsOutput, err := tests.ExecuteCommandOnPod(
+					virtClient,
+					pod,
+					"compute",
+					[]string{"ls", "-s", "/var/run/kubevirt-private/vmi-disks/disk0/disk.img"},
+				)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Sscanf(lsOutput, "%d %s", &imageSize, &unused)
+			}
 			return imageSize
 		}
 
@@ -568,12 +582,20 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 			dv.Annotations = map[string]string{"user.custom.annotation/storage.thick-provisioned": "true"}
 			return dv
 		}
-
-		table.FDescribeTable("fstrim from the VM influences disk.img", func(dvChange func(*cdiv1.DataVolume) *cdiv1.DataVolume, expectSmaller bool) {
-
+		table.FDescribeTable("fstrim from the VM influences disk.img", func(dvChange func(*cdiv1.DataVolume) *cdiv1.DataVolume, expectSmaller, withOCS bool) {
 			dataVolume := tests.NewRandomDataVolumeWithHttpImport(tests.GetUrl(tests.FedoraHttpUrl), tests.NamespaceTestDefault, k8sv1.ReadWriteOnce)
 			dataVolume.Spec.PVC.Resources.Requests[k8sv1.ResourceStorage] = resource.MustParse("5Gi")
 			dataVolume = dvChange(dataVolume)
+
+			if withOCS {
+				volumeMode := k8sv1.PersistentVolumeBlock
+				dataVolume.Spec.PVC.VolumeMode = &volumeMode
+				sc, exists := tests.GetCephStorageClass()
+				if !exists {
+					Skip("Skip OCS tests when Ceph is not present")
+				}
+				dataVolume.Spec.PVC.StorageClassName = &sc
+			}
 
 			vmi := tests.NewRandomVMIWithDataVolume(dataVolume.Name)
 			vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceMemory] = resource.MustParse("512M")
@@ -598,15 +620,7 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 				&expect.BExp{R: console.PromptExpression},
 			}, 360)).To(Succeed(), "should write until failure")
 
-			pod := tests.GetRunningPodByVirtualMachineInstance(vmi, tests.NamespaceTestDefault)
-			lsOutput, err := tests.ExecuteCommandOnPod(
-				virtClient,
-				pod,
-				"compute",
-				[]string{"ls", "-s", "/var/run/kubevirt-private/vmi-disks/disk0/disk.img"},
-			)
-			Expect(err).ToNot(HaveOccurred())
-			imageSizeBeforeTrim := ParseSize(lsOutput)
+			imageSizeBeforeTrim := getImageSize(vmi, withOCS)
 			By(fmt.Sprintf("image size before trim is %d", imageSizeBeforeTrim))
 
 			By("Deleting and trimming disk")
@@ -616,15 +630,8 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 				&expect.BSnd{S: "sudo fstrim -v /\n"},
 				&expect.BExp{R: console.PromptExpression},
 			}, 60)).To(Succeed(), "should trim within the VM")
-			pod = tests.GetRunningPodByVirtualMachineInstance(vmi, tests.NamespaceTestDefault)
-			lsOutput, err = tests.ExecuteCommandOnPod(
-				virtClient,
-				pod,
-				"compute",
-				[]string{"ls", "-s", "/var/run/kubevirt-private/vmi-disks/disk0/disk.img"},
-			)
-			Expect(err).ToNot(HaveOccurred())
-			imageSizeAfterTrim := ParseSize(lsOutput)
+
+			imageSizeAfterTrim := getImageSize(vmi, withOCS)
 			By(fmt.Sprintf("image size after trim is %d", imageSizeAfterTrim))
 
 			if expectSmaller {
@@ -638,10 +645,14 @@ var _ = SIGDescribe("[Serial]DataVolume Integration", func() {
 			err = virtClient.VirtualMachineInstance(tests.NamespaceTestDefault).Delete(vmi.Name, &metav1.DeleteOptions{})
 			Expect(err).To(BeNil())
 		},
-			table.Entry("by default, fstrim will make the image smaller", noop, true),
-			table.Entry("with preallocation true, fstrim has no effect", addPreallocationTrue, false),
-			table.Entry("with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true),
-			table.Entry("with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false),
+			table.Entry("by default, fstrim will make the image smaller", noop, true, false),
+			table.Entry("with preallocation true, fstrim has no effect", addPreallocationTrue, false, false),
+			table.Entry("with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true, false),
+			table.Entry("with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false, false),
+			table.Entry("by default, fstrim will make the image smaller", noop, true, true),
+			table.Entry("with preallocation true, fstrim has no effect", addPreallocationTrue, false, true),
+			table.Entry("with preallocation false, fstrim will make the image smaller", addPreallocationFalse, true, true),
+			table.Entry("with thick provision annotation, fstrim has no effect", addThickProvisionedAnnotation, false, true),
 		)
 
 		Context("using Alpine http import", func() {

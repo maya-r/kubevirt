@@ -87,6 +87,10 @@ metadata:
   name: ${namespace}
 EOF
 
+if [[ "$KUBEVIRT_STORAGE" == "rook-ceph" || "$KUBEVIRT_STORAGE" == "rook-ceph-default" ]]; then
+    _kubectl apply -f ${KUBEVIRT_DIR}/manifests/testing/rook-ceph-toolbox.yaml
+fi
+
 if [[ "$KUBEVIRT_STORAGE" == "rook-ceph" ]]; then
     _kubectl apply -f ${KUBEVIRT_DIR}/manifests/testing/external-snapshotter
     _kubectl apply -f ${KUBEVIRT_DIR}/manifests/testing/rook-ceph/common.yaml
