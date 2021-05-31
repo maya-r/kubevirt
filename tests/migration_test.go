@@ -28,6 +28,8 @@ import (
 	"strings"
 	"sync"
 
+	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
+
 	"kubevirt.io/kubevirt/tools/vms-generator/utils"
 
 	"fmt"
@@ -387,11 +389,15 @@ var _ = Describe("[Serial][rfe_id:393][crit:high][vendor:cnv-qe@redhat.com][leve
 				By("Checking that the VirtualMachineInstance console has expected output")
 				Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
+				gotExpectedCondition := false
 				for _, c := range vmi.Status.Conditions {
 					if c.Type == v1.VirtualMachineInstanceIsMigratable {
 						Expect(c.Status).To(Equal(k8sv1.ConditionFalse))
+						gotExpectedCondition = true
 					}
 				}
+
+				Expect(gotExpectedCondition).Should(BeTrue())
 
 				// execute a migration, wait for finalized state
 				migration := tests.NewRandomMigration(vmi.Name, vmi.Namespace)
@@ -889,11 +895,14 @@ var _ = Describe("[Serial][rfe_id:393][crit:high][vendor:cnv-qe@redhat.com][leve
 				By("Checking that the VirtualMachineInstance console has expected output")
 				Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
+				gotExpectedCondition := false
 				for _, c := range vmi.Status.Conditions {
 					if c.Type == v1.VirtualMachineInstanceIsMigratable {
 						Expect(c.Status).To(Equal(k8sv1.ConditionFalse))
+						gotExpectedCondition = true
 					}
 				}
+				Expect(gotExpectedCondition).Should(BeTrue())
 
 				// execute a migration, wait for finalized state
 				migration := tests.NewRandomMigration(vmi.Name, vmi.Namespace)
@@ -1698,17 +1707,20 @@ var _ = Describe("[Serial][rfe_id:393][crit:high][vendor:cnv-qe@redhat.com][leve
 				// Start the VirtualMachineInstance with the PVC attached
 				vmi := tests.NewRandomVMIWithPVC(pvName)
 				tests.AddUserData(vmi, "cloud-init", "#!/bin/bash\necho 'hello'\n")
-				vmi.Spec.Hostname = fmt.Sprintf("%s", cd.ContainerDiskCirros)
+				vmi.Spec.Hostname = string(cd.ContainerDiskCirros)
 				vmi = runVMIAndExpectLaunch(vmi, 180)
 
 				By("Checking that the VirtualMachineInstance console has expected output")
 				Expect(libnet.WithIPv6(console.LoginToCirros)(vmi)).To(Succeed())
 
+				gotExpectedCondition := false
 				for _, c := range vmi.Status.Conditions {
 					if c.Type == v1.VirtualMachineInstanceIsMigratable {
 						Expect(c.Status).To(Equal(k8sv1.ConditionFalse))
+						gotExpectedCondition = true
 					}
 				}
+				Expect(gotExpectedCondition).Should(BeTrue())
 
 				// execute a migration, wait for finalized state
 				migration := tests.NewRandomMigration(vmi.Name, vmi.Namespace)
@@ -1835,6 +1847,74 @@ var _ = Describe("[Serial][rfe_id:393][crit:high][vendor:cnv-qe@redhat.com][leve
 				})
 			})
 		})
+
+		Context("with VirtIOFS", func() {
+			var pvName string
+			BeforeEach(func() {
+				pvName = "test-virtiofs" + rand.String(48)
+				// Start a ISCSI POD and service
+				By("Starting an iSCSI POD")
+				iscsiTargetPod := tests.CreateISCSITargetPOD(cd.ContainerDiskAlpine)
+				iscsiTargetIPAddress := libnet.GetPodIpByFamily(iscsiTargetPod, k8sv1.IPv4Protocol)
+				Expect(iscsiTargetIPAddress).NotTo(BeEmpty())
+
+				// create a new PV and PVC (PVs can't be reused)
+				By("create a new iSCSI PV and PVC")
+				tests.CreateISCSIPvAndPvc(pvName, "1Gi", iscsiTargetIPAddress, k8sv1.ReadWriteMany, k8sv1.PersistentVolumeFilesystem)
+			})
+
+			AfterEach(func() {
+				// create a new PV and PVC (PVs can't be reused)
+				tests.DeletePvAndPvc(pvName)
+			})
+
+			It("should reject if using VirtIOFS ", func() {
+				tests.EnableFeatureGate(virtconfig.VirtIOFSGate)
+
+				vmi := tests.NewRandomVMIWithPVC(pvName)
+				vmi.Spec.Domain.Devices.Filesystems = []v1.Filesystem{
+					{
+						Name:     vmi.Spec.Domain.Devices.Disks[0].Name,
+						Virtiofs: &v1.FilesystemVirtiofs{},
+					},
+				}
+				vmi = runVMIAndExpectLaunchIgnoreWarnings(vmi, 180)
+				//vmi = tests.WaitUntilVMIReady(vmi, console.LoginToAlpine)
+				encoder := json.NewEncoder(GinkgoWriter)
+				fmt.Fprintln(GinkgoWriter, "Virtiofs VMI:")
+				encoder.Encode(vmi)
+
+				By("Checking that the VirtualMachineInstance console has expected output")
+				Expect(console.LoginToAlpine(vmi)).To(Succeed())
+
+				By("Checking that the VMI status contains the VirtIOFSNotLiveMigratable condition with status of False")
+				gotExpectedCondition := false
+				for _, condition := range vmi.Status.Conditions {
+					if condition.Type == v1.VirtualMachineInstanceIsMigratable {
+						Expect(condition.Status).Should(Equal(k8sv1.ConditionFalse))
+						Expect(condition.Reason).Should(Equal(v1.VirtualMachineInstanceReasonVirtIOFSNotMigratable))
+						gotExpectedCondition = true
+						break
+					}
+				}
+				Expect(gotExpectedCondition).Should(BeTrue())
+
+				By("Try to migrate the VMI. Expect failure")
+				// execute a migration, wait for finalized state
+				migration := tests.NewRandomMigration(vmi.Name, vmi.Namespace)
+				migrationUID := tests.RunMigrationAndExpectCompletion(virtClient, migration, 180)
+
+				// check VMI, confirm migration state
+				confirmVMIPostMigrationFailed(vmi, migrationUID)
+
+				// delete VMI
+				By("Deleting the VMI")
+				Expect(virtClient.VirtualMachineInstance(vmi.Namespace).Delete(vmi.Name, &metav1.DeleteOptions{})).To(Succeed())
+
+				By("Waiting for VMI to disappear")
+				tests.WaitForVirtualMachineToDisappearWithTimeout(vmi, 120)
+			})
+		})
 	})
 
 	Context("with sata disks", func() {
@@ -1897,12 +1977,6 @@ var _ = Describe("[Serial][rfe_id:393][crit:high][vendor:cnv-qe@redhat.com][leve
 			// check VMI, confirm migration state
 			tests.ConfirmVMIPostMigration(virtClient, vmi, migrationUID)
 
-			// delete VMI
-			By("Deleting the VMI")
-			Expect(virtClient.VirtualMachineInstance(vmi.Namespace).Delete(vmi.Name, &metav1.DeleteOptions{})).To(Succeed())
-
-			By("Waiting for VMI to disappear")
-			tests.WaitForVirtualMachineToDisappearWithTimeout(vmi, 120)
 		})
 	})
 
