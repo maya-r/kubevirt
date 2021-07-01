@@ -20,6 +20,7 @@ func (d *VirtualMachineController) virtualMachineOptions(preallocatedVolumes []s
 		MemBalloonStatsPeriod: period,
 		PreallocatedVolumes:   preallocatedVolumes,
 		Topology:              topologyToTopology(d.capabilities),
+		DiskSizes:             d.diskSizes,
 	}
 	return options
 }

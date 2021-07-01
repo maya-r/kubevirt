@@ -546,6 +546,7 @@ type Disk struct {
 	Address      *Address      `xml:"address,omitempty"`
 	Model        string        `xml:"model,attr,omitempty"`
 	BlockIO      *BlockIO      `xml:"blockio,omitempty"`
+	Size         int64         `xml:"size,omitempty"`
 }
 
 type DiskAuth struct {

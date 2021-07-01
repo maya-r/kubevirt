@@ -229,6 +229,7 @@ func NewController(
 
 	c.deviceManagerController = device_manager.NewDeviceController(c.host, maxDevices, permissions, clusterConfig)
 	c.heartBeat = heartbeat.NewHeartBeat(clientset.CoreV1(), c.deviceManagerController, clusterConfig, host)
+	c.diskSizes = make(map[string]int64)
 
 	return c
 }
@@ -273,6 +274,9 @@ type VirtualMachineController struct {
 	virtLauncherFSRunDirPattern string
 	heartBeat                   *heartbeat.HeartBeat
 	capabilities                *nodelabellerapi.Capabilities
+
+	// Local tracking of disk sizes
+	diskSizes map[string]int64
 }
 
 type virtLauncherCriticalNetworkError struct {
@@ -2457,6 +2461,10 @@ func (d *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 			}
 			if pvcutils.IsPreallocated(pvc.ObjectMeta.Annotations) {
 				preallocatedVolumes = append(preallocatedVolumes, v.Name)
+			}
+			expectedDiskSize, ok := pvcutils.ExpectedDiskSize(d.clientset, pvc)
+			if ok {
+				d.diskSizes[v.Name] = expectedDiskSize
 			}
 		}
 	}
