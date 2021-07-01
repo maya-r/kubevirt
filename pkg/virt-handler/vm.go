@@ -2507,10 +2507,7 @@ func (d *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 		}
 	}
 
-	smbios := d.clusterConfig.GetSMBIOS()
-	period := d.clusterConfig.GetMemBalloonStatsPeriod()
-
-	options := virtualMachineOptions(smbios, period, preallocatedVolumes, d.capabilities)
+	options := d.virtualMachineOptions(preallocatedVolumes)
 
 	err = client.SyncVirtualMachine(vmi, options)
 	if err != nil {
