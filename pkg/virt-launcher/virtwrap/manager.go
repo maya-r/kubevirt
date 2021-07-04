@@ -892,6 +892,14 @@ func (l *LibvirtDomainManager) SyncVMI(vmi *v1.VirtualMachineInstance, useEmulat
 		return nil, err
 	}
 
+	// Resize and notify the VM about changed disks
+	for _, disk := range domain.Spec.Devices.Disks {
+		if imageCanBeExpanded(disk) {
+			logger.V(1).Infof("Disk about to be resized by libvirt to size %d, imageCanBeExpanded(disk) %v", disk.Size, imageCanBeExpanded(disk))
+			dom.BlockResize(getSourceFile(disk), uint64(disk.Size), libvirt.DOMAIN_BLOCK_RESIZE_BYTES)
+		}
+	}
+
 	//Look up all the disks to detach
 	for _, detachDisk := range getDetachedDisks(oldSpec.Devices.Disks, domain.Spec.Devices.Disks) {
 		logger.V(1).Infof("Detaching disk %s, target %s", detachDisk.Alias.GetName(), detachDisk.Target.Device)
