@@ -117,6 +117,7 @@ type ConverterContext struct {
 	VolumesDiscardIgnore  []string
 	Topology              *cmdv1.Topology
 	DiskSizes             map[string]int64
+	ChangedDisks          []string
 }
 
 func contains(volumes []string, name string) bool {
@@ -255,6 +256,9 @@ func Convert_v1_Disk_To_api_Disk(c *ConverterContext, diskDevice *v1.Disk, disk 
 		}
 		if diskSize, ok := c.DiskSizes[diskDevice.Name]; ok {
 			disk.Size = diskSize
+		}
+		if contains(c.ChangedDisks, diskDevice.Name) {
+			disk.ForceResize = true
 		}
 	}
 	if numQueues != nil && disk.Target.Bus == "virtio" {

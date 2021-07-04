@@ -74,6 +74,7 @@ message VirtualMachineOptions {
   repeated string PreallocatedVolumes = 3;
   Topology topology = 4;
   map<string, int64> DiskSizes = 5;
+  repeated string ChangedDisks = 6;
 }
 
 message VMIRequest {

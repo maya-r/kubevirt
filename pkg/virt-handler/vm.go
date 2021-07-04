@@ -275,8 +275,9 @@ type VirtualMachineController struct {
 	heartBeat                   *heartbeat.HeartBeat
 	capabilities                *nodelabellerapi.Capabilities
 
-	// Local tracking of disk sizes
-	diskSizes map[string]int64
+	// Local tracking of disk sizes and whether they changed
+	diskSizes    map[string]int64
+	changedDisks []string
 }
 
 type virtLauncherCriticalNetworkError struct {
@@ -2464,6 +2465,10 @@ func (d *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 			}
 			expectedDiskSize, ok := pvcutils.ExpectedDiskSize(d.clientset, pvc)
 			if ok {
+				currentSize, ok := d.diskSizes[v.Name]
+				if ok && currentSize != expectedDiskSize {
+					d.changedDisks = append(d.changedDisks, v.Name)
+				}
 				d.diskSizes[v.Name] = expectedDiskSize
 			}
 		}
@@ -2525,6 +2530,7 @@ func (d *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 		}
 		return err
 	}
+	d.changedDisks = []string{}
 	d.recorder.Event(vmi, k8sv1.EventTypeNormal, v1.Created.String(), "VirtualMachineInstance defined.")
 	if vmi.IsRunning() {
 		// Umount any disks no longer mounted

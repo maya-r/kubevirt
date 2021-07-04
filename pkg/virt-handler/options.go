@@ -21,6 +21,7 @@ func (d *VirtualMachineController) virtualMachineOptions(preallocatedVolumes []s
 		PreallocatedVolumes:   preallocatedVolumes,
 		Topology:              topologyToTopology(d.capabilities),
 		DiskSizes:             d.diskSizes,
+		ChangedDisks:          d.changedDisks,
 	}
 	return options
 }

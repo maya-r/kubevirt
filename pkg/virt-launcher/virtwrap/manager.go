@@ -778,6 +778,7 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		// Add preallocated and thick-provisioned volumes for which we need to avoid the discard=unmap option
 		c.VolumesDiscardIgnore = options.PreallocatedVolumes
 		c.DiskSizes = options.DiskSizes
+		c.ChangedDisks = options.ChangedDisks
 	}
 
 	if !isMigrationTarget {
@@ -894,7 +895,7 @@ func (l *LibvirtDomainManager) SyncVMI(vmi *v1.VirtualMachineInstance, useEmulat
 
 	// Resize and notify the VM about changed disks
 	for _, disk := range domain.Spec.Devices.Disks {
-		if imageCanBeExpanded(disk) {
+		if disk.ForceResize || imageCanBeExpanded(disk) {
 			logger.V(1).Infof("Disk about to be resized by libvirt to size %d, imageCanBeExpanded(disk) %v", disk.Size, imageCanBeExpanded(disk))
 			dom.BlockResize(getSourceFile(disk), uint64(disk.Size), libvirt.DOMAIN_BLOCK_RESIZE_BYTES)
 		}
